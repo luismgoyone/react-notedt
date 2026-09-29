@@ -1,70 +1,60 @@
-# Getting Started with Create React App
+# Notedt
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A small budget tracker: record income and expenses, see your savings, and get a
+per-category breakdown of where your money goes. Data is stored in the
+browser's `localStorage`. There is no backend or account.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Add, edit, and delete transactions, with form validation
+- Savings total plus income and expense totals
+- Per-category breakdown for income and for expenses
+- Search, plus filters by date range, type, and amount range
+- Responsive layout: bottom tab bar and bottom-sheet dialogs on phones,
+  sidebar on larger screens
+- Transactions saved by pre-1.0 versions are migrated automatically on first load
 
-### `npm start`
+## Getting started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Requires Node 22.22+ and npm 11+ (see `.nvmrc`).
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```sh
+npm install
+npm run dev
+```
 
-### `npm test`
+## Scripts
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+| Script               | What it does                                |
+| -------------------- | ------------------------------------------- |
+| `npm run dev`        | Start the Vite dev server                   |
+| `npm run build`      | Type-check and build to `dist/`             |
+| `npm run preview`    | Serve the production build locally          |
+| `npm test`           | Run the test suite once (Vitest)            |
+| `npm run test:watch` | Run tests in watch mode                     |
+| `npm run lint`       | Lint with ESLint                            |
+| `npm run typecheck`  | Type-check with `tsc`                       |
+| `npm run format`     | Format with Prettier (`format:check` in CI) |
 
-### `npm run build`
+## Project structure
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```
+src/
+  components/  UI building blocks (layout, modals, navigation, forms)
+  pages/       Route screens: Overview and Transactions
+  state/       Transactions store and toast notifications (React context)
+  lib/         Pure logic: storage, totals, search/filter, formatting
+  types/       Shared TypeScript types
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Deploying
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The app is hosted on Vercel through its GitHub integration:
 
-### `npm run eject`
+- Pushes to `master` deploy to production (https://react-notedt.vercel.app).
+- Other branches and pull requests get preview deployments.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Build settings live in `vercel.json` (Vite preset, output in `dist/`, and a
+rewrite to `index.html` so client-side routes like `/transactions` work on
+refresh). To host elsewhere, run `npm run build`, serve `dist/` as a static
+site, and add the same rewrite.
