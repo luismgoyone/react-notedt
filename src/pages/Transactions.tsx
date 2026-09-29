@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { BsArrowRepeat } from "react-icons/bs";
 import { FiPlus } from "react-icons/fi";
 import {
   HiOutlineAdjustments,
   HiOutlinePencil,
   HiOutlineTrash,
 } from "react-icons/hi";
-import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { FilterModal } from "../components/FilterModal";
 import { PageHeader } from "../components/PageHeader";
@@ -21,7 +21,7 @@ import {
   sortTransactions,
 } from "../lib/transactions";
 import { useToast } from "../state/useToast";
-import { useTransactions } from "../state/useTransactions";
+import { useAppData } from "../state/useAppData";
 import {
   EMPTY_FILTERS,
   type Transaction,
@@ -29,14 +29,17 @@ import {
 } from "../types/transaction";
 
 export default function Transactions() {
-  const { transactions, deleteTransaction } = useTransactions();
+  const {
+    data: { transactions },
+    deleteTransaction,
+    restoreTransaction,
+  } = useAppData();
   const { openAddTransaction } = useLayoutContext();
   const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<TransactionFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [deleting, setDeleting] = useState<Transaction | null>(null);
 
   if (transactions.length === 0) {
     return (
@@ -67,15 +70,25 @@ export default function Transactions() {
     setFilters(EMPTY_FILTERS);
   };
 
-  const confirmDelete = () => {
-    if (!deleting) return;
+  const onDelete = (tx: Transaction) => {
     try {
-      deleteTransaction(deleting.id);
-      showToast("Transaction deleted");
+      const removed = deleteTransaction(tx.id);
+      if (!removed) return;
+      showToast(`Deleted ${removed.category}`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            try {
+              restoreTransaction(removed);
+            } catch {
+              showToast("Couldn't restore the transaction.", "error");
+            }
+          },
+        },
+      });
     } catch {
       showToast("Couldn't delete the transaction. Please try again.", "error");
     }
-    setDeleting(null);
   };
 
   return (
@@ -99,7 +112,7 @@ export default function Transactions() {
           {activeFilterCount > 0 && (
             <span
               aria-hidden
-              className="absolute -top-2 -right-2 flex size-5 items-center justify-center rounded-full bg-brand text-xs text-white"
+              className="absolute -top-2 -right-2 flex size-5 items-center justify-center rounded-full bg-brand text-xs text-on-brand"
             >
               {activeFilterCount}
             </span>
@@ -129,13 +142,13 @@ export default function Transactions() {
           description="No transactions match your search or filters. Try something different."
         />
       ) : (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-white">
+        <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
           {visible.map((tx) => (
             <TransactionRow
               key={tx.id}
               transaction={tx}
               onEdit={() => setEditing(tx)}
-              onDelete={() => setDeleting(tx)}
+              onDelete={() => onDelete(tx)}
             />
           ))}
         </ul>
@@ -152,22 +165,6 @@ export default function Transactions() {
         transaction={editing}
         onClose={() => setEditing(null)}
       />
-      <ConfirmDialog
-        open={deleting !== null}
-        title="Delete transaction"
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        onClose={() => setDeleting(null)}
-      >
-        {deleting && (
-          <p>
-            Delete the {formatCurrency(deleting.amount)}{" "}
-            <strong>{deleting.category}</strong>{" "}
-            {TYPE_LABELS[deleting.type].toLowerCase()} from{" "}
-            {formatDate(deleting.date)}? This can't be undone.
-          </p>
-        )}
-      </ConfirmDialog>
     </>
   );
 }
@@ -190,7 +187,15 @@ function TransactionRow({
         className={`mt-1.5 size-3 shrink-0 rounded-full ${isIncome ? "bg-brand" : "bg-expense"}`}
       />
       <div className="min-w-0 flex-1">
-        <p className="font-medium break-words">{tx.category}</p>
+        <p className="font-medium break-words">
+          {tx.category}
+          {tx.recurringId && (
+            <span className="ml-2 inline-flex items-center gap-1 align-middle text-xs font-normal text-muted">
+              <BsArrowRepeat aria-hidden size={12} />
+              Recurring
+            </span>
+          )}
+        </p>
         {tx.description && (
           <p className="mt-0.5 line-clamp-2 text-sm break-words text-muted">
             {tx.description}

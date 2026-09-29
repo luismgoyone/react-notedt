@@ -1,17 +1,15 @@
 import { useForm, useWatch } from "react-hook-form";
-import { CATEGORY_GROUPS, TYPE_LABELS } from "../lib/categories";
+import { getCategoryGroups } from "../lib/categories";
 import { isISODate, toISODate } from "../lib/format";
+import { validateAmount } from "../lib/validation";
 import { useToast } from "../state/useToast";
-import { useTransactions } from "../state/useTransactions";
-import {
-  TRANSACTION_TYPES,
-  type Transaction,
-  type TransactionType,
-} from "../types/transaction";
+import { useAppData } from "../state/useAppData";
+import type { Transaction, TransactionType } from "../types/transaction";
+import { errorProps } from "./errorProps";
+import { CategoryOptions, FieldError, TypeToggle } from "./FormFields";
 import { Modal } from "./Modal";
 
 const FORM_ID = "transaction-form";
-const MAX_AMOUNT = 1_000_000_000;
 
 interface FormValues {
   type: TransactionType;
@@ -62,7 +60,7 @@ function TransactionForm({
   transaction?: Transaction | null;
   onDone: () => void;
 }) {
-  const { addTransaction, updateTransaction } = useTransactions();
+  const { data, addTransaction, updateTransaction } = useAppData();
   const { showToast } = useToast();
   const {
     register,
@@ -81,12 +79,7 @@ function TransactionForm({
   });
 
   const type = useWatch({ control, name: "type" });
-  const groups = CATEGORY_GROUPS[type];
-  // Keep a saved category selectable even if it's no longer in the list.
-  const hasUnknownCategory =
-    transaction?.type === type &&
-    !groups.some((g) => g.categories.includes(transaction.category));
-
+  const groups = getCategoryGroups(type, data.categories);
   const onSubmit = (values: FormValues) => {
     const input = {
       type: values.type,
@@ -116,33 +109,12 @@ function TransactionForm({
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-4"
     >
-      <fieldset>
-        <legend className="field-label">Type</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {TRANSACTION_TYPES.map((option) => (
-            <label
-              key={option}
-              className={`flex min-h-11 items-center justify-center rounded-md border text-sm font-semibold uppercase transition-colors has-focus-visible:outline-2 has-focus-visible:outline-brand ${
-                type === option
-                  ? option === "income"
-                    ? "border-brand bg-brand text-white"
-                    : "border-expense bg-expense text-white"
-                  : "border-line bg-white text-muted hover:border-brand"
-              }`}
-            >
-              <input
-                type="radio"
-                value={option}
-                className="sr-only"
-                {...register("type", {
-                  onChange: () => setValue("category", ""),
-                })}
-              />
-              {TYPE_LABELS[option]}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <TypeToggle
+        value={type}
+        registration={register("type", {
+          onChange: () => setValue("category", ""),
+        })}
+      />
 
       <div>
         <label htmlFor="tx-category" className="field-label">
@@ -151,39 +123,17 @@ function TransactionForm({
         <select
           id="tx-category"
           className="field"
-          aria-invalid={errors.category ? true : undefined}
-          aria-describedby={errors.category ? "tx-category-error" : undefined}
+          {...errorProps("tx-category-error", errors.category?.message)}
           {...register("category", { required: "Choose a category." })}
         >
-          <option value="" disabled>
-            Select a category
-          </option>
-          {hasUnknownCategory && transaction && (
-            <option value={transaction.category}>{transaction.category}</option>
-          )}
-          {groups.map((group) =>
-            groups.length === 1 ? (
-              group.categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))
-            ) : (
-              <optgroup key={group.label} label={group.label}>
-                {group.categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </optgroup>
-            ),
-          )}
+          <CategoryOptions
+            groups={groups}
+            extra={
+              transaction?.type === type ? transaction.category : undefined
+            }
+          />
         </select>
-        {errors.category && (
-          <p id="tx-category-error" className="field-error">
-            {errors.category.message}
-          </p>
-        )}
+        <FieldError id="tx-category-error" message={errors.category?.message} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -225,19 +175,7 @@ function TransactionForm({
             aria-describedby={errors.amount ? "tx-amount-error" : undefined}
             {...register("amount", {
               required: "Enter an amount.",
-              validate: (value) => {
-                const amount = Number(value);
-                if (!Number.isFinite(amount) || amount <= 0) {
-                  return "Enter an amount greater than 0.";
-                }
-                if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) {
-                  return "Use at most 2 decimal places.";
-                }
-                if (amount > MAX_AMOUNT) {
-                  return "That amount is too large.";
-                }
-                return true;
-              },
+              validate: validateAmount,
             })}
           />
           {errors.amount && (

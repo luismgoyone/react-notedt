@@ -1,10 +1,12 @@
 import type {
+  Budget,
   Transaction,
   TransactionFilters,
   TransactionType,
 } from "../types/transaction";
 import { TYPE_LABELS } from "./categories";
 import { formatCurrency, formatDate } from "./format";
+import { addMonths, toMonthKey, type MonthKey } from "./month";
 
 /** Sums in centavos so repeated additions don't drift (0.1 + 0.2). */
 function sumAmounts(transactions: Transaction[]) {
@@ -93,4 +95,66 @@ export function countActiveFilters(filters: TransactionFilters) {
     filters.min !== null,
     filters.max !== null,
   ].filter(Boolean).length;
+}
+
+export function inMonth(transactions: Transaction[], month: MonthKey) {
+  return transactions.filter((tx) => toMonthKey(tx.date) === month);
+}
+
+/** Month totals plus the change from the previous month (null if no data). */
+export function getMonthSummary(transactions: Transaction[], month: MonthKey) {
+  const current = getTotals(inMonth(transactions, month));
+  const previousTransactions = inMonth(transactions, addMonths(month, -1));
+  const previous =
+    previousTransactions.length > 0 ? getTotals(previousTransactions) : null;
+  return { current, previous };
+}
+
+/** Relative change, or null when there's nothing to compare against. */
+export function percentChange(current: number, previous: number | undefined) {
+  if (previous === undefined || previous === 0) return null;
+  return (current - previous) / Math.abs(previous);
+}
+
+export interface BudgetProgress extends Budget {
+  spent: number;
+  remaining: number;
+  /** spent / limit; above 1 means over budget. */
+  ratio: number;
+}
+
+export function getBudgetProgress(
+  transactions: Transaction[],
+  budgets: Budget[],
+  month: MonthKey,
+): BudgetProgress[] {
+  const monthExpenses = inMonth(transactions, month).filter(
+    (tx) => tx.type === "expense",
+  );
+  return budgets
+    .map((budget) => {
+      const spent = sumAmounts(
+        monthExpenses.filter((tx) => tx.category === budget.category),
+      );
+      return {
+        ...budget,
+        spent,
+        remaining:
+          (Math.round(budget.limit * 100) - Math.round(spent * 100)) / 100,
+        ratio: spent / budget.limit,
+      };
+    })
+    .sort((a, b) => b.ratio - a.ratio || a.category.localeCompare(b.category));
+}
+
+/** Earliest and latest months that have transactions. */
+export function getMonthRange(transactions: Transaction[]) {
+  if (transactions.length === 0) return null;
+  let first = transactions[0]!.date;
+  let last = first;
+  for (const tx of transactions) {
+    if (tx.date < first) first = tx.date;
+    if (tx.date > last) last = tx.date;
+  }
+  return { first: toMonthKey(first), last: toMonthKey(last) };
 }

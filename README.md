@@ -6,13 +6,21 @@ browser's `localStorage`. There is no backend or account.
 
 ## Features
 
-- Add, edit, and delete transactions, with form validation
-- Savings total plus income and expense totals
-- Per-category breakdown for income and for expenses
-- Search, plus filters by date range, type, and amount range
-- Responsive layout: bottom tab bar and bottom-sheet dialogs on phones,
+- **Transactions:** add, edit, and delete with validation, with Undo after a delete
+- **Monthly overview:** income, expenses, and net for any month, compared
+  with the previous month, plus a per-category breakdown
+- **Budgets:** monthly limits per expense category, with progress and
+  over-budget warnings
+- **Recurring transactions:** monthly items such as rent, bills, or salary
+  are added automatically on their day; rules can be paused or edited
+- **Custom categories** alongside the built-in ones
+- **Search and filters** by date range, type, and amount
+- **Backup and restore** (JSON), CSV export for spreadsheets, and CSV import
+- **Installable and offline-ready** (PWA)
+- **Light, dark, or system theme**
+- **Responsive layout:** bottom tab bar and bottom-sheet dialogs on phones,
   sidebar on larger screens
-- Transactions saved by pre-1.0 versions are migrated automatically on first load
+- Data from older versions is migrated automatically on first load
 
 ## Getting started
 
@@ -42,16 +50,24 @@ npm run dev
 src/
   components/  UI building blocks (layout, modals, navigation, forms)
   pages/       Route screens: Overview and Transactions
-  state/       Transactions store and toast notifications (React context)
-  lib/         Pure logic: storage, totals, search/filter, formatting
+  state/       App data store, toasts, and theme (React context)
+  lib/         Pure logic: storage, data updates, recurring rules, totals,
+               budgets, CSV, search/filter, formatting
+e2e/           Playwright end-to-end tests
   types/       Shared TypeScript types
 ```
+
+## Data and privacy
+
+Everything is stored in the browser's `localStorage` under `notedt:data`
+(the theme preference is under `notedt:theme`). Nothing is sent to a server.
+Use **Settings → Your data** to export a backup.
 
 ## Deploying
 
 The app is hosted on Vercel through its GitHub integration:
 
-- Pushes to `master` deploy to production (https://react-notedt.vercel.app).
+- Pushes to `dev` deploy to production (https://react-notedt.vercel.app).
 - Other branches and pull requests get preview deployments.
 
 Build settings live in `vercel.json` (Vite preset, output in `dist/`, and a

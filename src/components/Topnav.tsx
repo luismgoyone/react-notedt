@@ -4,16 +4,24 @@ import { Link } from "react-router";
 import logo from "../images/Logo.png";
 import { formatCurrency } from "../lib/format";
 import { getTotals } from "../lib/transactions";
-import { useTransactions } from "../state/useTransactions";
+import { useAppData } from "../state/useAppData";
 
 export function Topnav({ onAddTransaction }: { onAddTransaction: () => void }) {
-  const { transactions } = useTransactions();
+  const {
+    data: { transactions },
+  } = useAppData();
   const { savings } = getTotals(transactions);
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-brand bg-white px-4 py-3 md:px-6 md:py-5">
+    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-brand bg-surface px-4 py-3 md:px-6 md:py-5">
       <Link to="/" className="shrink-0 md:hidden" aria-label="Notedt home">
-        <img src={logo} alt="" width={40} height={32} className="h-8 w-auto" />
+        <img
+          src={logo}
+          alt=""
+          width={40}
+          height={32}
+          className="h-8 w-auto dark:brightness-160"
+        />
       </Link>
       <div className="min-w-0 flex-1 text-brand">
         <p className="text-xs tracking-wide md:text-sm">Savings</p>

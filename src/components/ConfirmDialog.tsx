@@ -8,6 +8,8 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   onConfirm: () => void;
   onClose: () => void;
+  /** "danger" for destructive actions (default), "primary" otherwise. */
+  tone?: "danger" | "primary";
 }
 
 export function ConfirmDialog({
@@ -17,6 +19,7 @@ export function ConfirmDialog({
   confirmLabel,
   onConfirm,
   onClose,
+  tone = "danger",
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -28,7 +31,11 @@ export function ConfirmDialog({
           <button type="button" className="btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn-danger" onClick={onConfirm}>
+          <button
+            type="button"
+            className={tone === "danger" ? "btn-danger" : "btn-primary"}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </>
