@@ -67,7 +67,7 @@ Use **Settings → Your data** to export a backup.
 
 The app is hosted on Vercel through its GitHub integration:
 
-- Pushes to `dev` deploy to production (https://react-notedt.vercel.app).
+- Pushes to `main` deploy to production (https://react-notedt.vercel.app).
 - Other branches and pull requests get preview deployments.
 
 Build settings live in `vercel.json` (Vite preset, output in `dist/`, and a
