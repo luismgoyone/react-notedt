@@ -17,7 +17,7 @@ export function CategoryBreakdown({ type, rows }: CategoryBreakdownProps) {
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-muted">
-        No {type === "income" ? "income" : "expenses"} recorded yet.
+        No {type === "income" ? "income" : "expenses"} this month.
       </p>
     );
   }

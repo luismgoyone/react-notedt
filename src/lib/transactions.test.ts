@@ -2,6 +2,10 @@ import { EMPTY_FILTERS, type Transaction } from "../types/transaction";
 import { formatDate } from "./format";
 import {
   countActiveFilters,
+  getBudgetProgress,
+  getMonthRange,
+  getMonthSummary,
+  percentChange,
   getCategoryTotals,
   getTotals,
   matchesFilters,
@@ -111,5 +115,67 @@ describe("filters", () => {
     expect(
       countActiveFilters({ ...EMPTY_FILTERS, from: "2026-01-01", min: 0 }),
     ).toBe(2);
+  });
+});
+
+describe("monthly", () => {
+  const data = [
+    make({ type: "income", amount: 1000, date: "2026-08-01" }),
+    make({ type: "expense", amount: 400, date: "2026-08-15" }),
+    make({ type: "income", amount: 1500, date: "2026-09-01" }),
+    make({
+      type: "expense",
+      category: "Rentals",
+      amount: 300,
+      date: "2026-09-02",
+    }),
+    make({
+      type: "expense",
+      category: "Rentals",
+      amount: 900,
+      date: "2026-09-20",
+    }),
+  ];
+
+  it("summarizes a month and the one before it", () => {
+    expect(getMonthSummary(data, "2026-09")).toEqual({
+      current: { income: 1500, expense: 1200, savings: 300 },
+      previous: { income: 1000, expense: 400, savings: 600 },
+    });
+    expect(getMonthSummary(data, "2026-08").previous).toBeNull();
+    expect(percentChange(1500, 1000)).toBe(0.5);
+    expect(percentChange(1500, undefined)).toBeNull();
+  });
+
+  it("tracks budget use for the month, most used first", () => {
+    const progress = getBudgetProgress(
+      data,
+      [
+        { category: "Rentals", limit: 1000 },
+        { category: "Water Bill", limit: 500 },
+      ],
+      "2026-09",
+    );
+    expect(progress).toEqual([
+      {
+        category: "Rentals",
+        limit: 1000,
+        spent: 1200,
+        remaining: -200,
+        ratio: 1.2,
+      },
+      {
+        category: "Water Bill",
+        limit: 500,
+        spent: 0,
+        remaining: 500,
+        ratio: 0,
+      },
+    ]);
+  });
+
+  it("finds the range of months with data", () => {
+    expect(getMonthRange(data)).toEqual({ first: "2026-08", last: "2026-09" });
+    expect(getMonthRange([])).toBeNull();
   });
 });

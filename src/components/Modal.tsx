@@ -36,7 +36,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      className="fixed inset-x-0 top-auto bottom-0 m-0 max-h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-t-2xl bg-white p-0 text-ink shadow-xl open:flex sm:inset-0 sm:m-auto sm:max-h-[85dvh] sm:max-w-lg sm:rounded-xl"
+      className="fixed inset-x-0 top-auto bottom-0 m-0 max-h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-t-2xl bg-surface p-0 text-ink shadow-xl open:flex sm:inset-0 sm:m-auto sm:max-h-[85dvh] sm:max-w-lg sm:rounded-xl"
     >
       {open && (
         <>

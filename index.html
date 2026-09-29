@@ -7,13 +7,14 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="theme-color" content="#00766c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Notedt" />
     <meta
       name="description"
       content="Notedt — track your income and expenses and see where your money goes."
     />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -21,6 +22,17 @@
       rel="stylesheet"
     />
     <title>Notedt</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a light flash.
+      try {
+        var pref = localStorage.getItem("notedt:theme");
+        var dark =
+          pref === "dark" ||
+          (pref !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run Notedt.</noscript>

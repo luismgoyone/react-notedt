@@ -1,40 +1,114 @@
 import {
+  EMPTY_DATA,
   TRANSACTION_TYPES,
+  type AppData,
+  type Budget,
+  type CustomCategory,
+  type RecurringRule,
   type Transaction,
   type TransactionType,
 } from "../types/transaction";
 import { isISODate } from "./format";
+import { isMonthKey } from "./month";
 
-export const STORAGE_KEY = "notedt:transactions";
-const STORAGE_VERSION = 1;
+export const STORAGE_KEY = "notedt:data";
+const STORAGE_VERSION = 2;
 const CORRUPT_BACKUP_KEY = `${STORAGE_KEY}:corrupt-backup`;
 
+// v1 (1.0) stored only transactions under this key.
+const V1_KEY = "notedt:transactions";
 // Pre-1.0 builds stored one transaction per numeric key plus a "lastKey" counter.
 const LEGACY_LAST_KEY = "lastKey";
 
-interface StoredPayload {
-  version: number;
-  transactions: unknown[];
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isType(value: unknown): value is TransactionType {
+  return TRANSACTION_TYPES.includes(value as TransactionType);
+}
+
+function isAmount(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 function isTransaction(value: unknown): value is Transaction {
   if (!isRecord(value)) return false;
   return (
     typeof value.id === "string" &&
-    TRANSACTION_TYPES.includes(value.type as TransactionType) &&
+    isType(value.type) &&
     typeof value.category === "string" &&
-    typeof value.amount === "number" &&
-    Number.isFinite(value.amount) &&
-    value.amount > 0 &&
+    isAmount(value.amount) &&
     isISODate(value.date) &&
     typeof value.description === "string" &&
     typeof value.createdAt === "string" &&
-    typeof value.updatedAt === "string"
+    typeof value.updatedAt === "string" &&
+    (value.recurringId === undefined || typeof value.recurringId === "string")
   );
+}
+
+function isCustomCategory(value: unknown): value is CustomCategory {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    isType(value.type) &&
+    typeof value.name === "string" &&
+    value.name.trim() !== ""
+  );
+}
+
+function isBudget(value: unknown): value is Budget {
+  return (
+    isRecord(value) &&
+    typeof value.category === "string" &&
+    isAmount(value.limit)
+  );
+}
+
+function isRecurringRule(value: unknown): value is RecurringRule {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" &&
+    isType(value.type) &&
+    typeof value.category === "string" &&
+    isAmount(value.amount) &&
+    typeof value.description === "string" &&
+    Number.isInteger(value.dayOfMonth) &&
+    (value.dayOfMonth as number) >= 1 &&
+    (value.dayOfMonth as number) <= 31 &&
+    isISODate(value.startDate) &&
+    (value.generatedThrough === null || isMonthKey(value.generatedThrough)) &&
+    typeof value.active === "boolean" &&
+    typeof value.createdAt === "string"
+  );
+}
+
+function list<T>(value: unknown, guard: (item: unknown) => item is T): T[] {
+  return Array.isArray(value) ? value.filter(guard) : [];
+}
+
+/**
+ * Validates data from storage or an imported backup. Accepts the current
+ * format and the 1.0 transactions-only format; invalid entries are dropped.
+ * Returns null when the value isn't Notedt data at all.
+ */
+export function parseAppData(value: unknown): AppData | null {
+  if (!isRecord(value) || !Array.isArray(value.transactions)) return null;
+  const budgets = list(value.budgets, isBudget);
+  return {
+    transactions: list(value.transactions, isTransaction),
+    categories: list(value.categories, isCustomCategory),
+    // Keep one budget per category.
+    budgets: budgets.filter(
+      (budget, index) =>
+        budgets.findIndex((b) => b.category === budget.category) === index,
+    ),
+    recurring: list(value.recurring, isRecurringRule),
+  };
+}
+
+export function serializeAppData(data: AppData) {
+  return JSON.stringify({ version: STORAGE_VERSION, ...data });
 }
 
 export function createId() {
@@ -93,43 +167,44 @@ function clearLegacy(storage: Storage) {
   storage.removeItem(LEGACY_LAST_KEY);
 }
 
-export function saveTransactions(
-  transactions: Transaction[],
-  storage: Storage = localStorage,
-) {
-  const payload: StoredPayload = { version: STORAGE_VERSION, transactions };
-  storage.setItem(STORAGE_KEY, JSON.stringify(payload));
+export function saveAppData(data: AppData, storage: Storage = localStorage) {
+  storage.setItem(STORAGE_KEY, serializeAppData(data));
+}
+
+function parseStored(raw: string, storage: Storage, backupKey: string) {
+  try {
+    const data = parseAppData(JSON.parse(raw));
+    if (!data) throw new Error("Unexpected storage shape");
+    return data;
+  } catch {
+    if (storage.getItem(backupKey) === null) storage.setItem(backupKey, raw);
+    return null;
+  }
 }
 
 /**
- * Reads saved transactions, migrating the legacy per-key format once.
- * Invalid entries are dropped; unreadable data is backed up, never discarded.
+ * Reads saved data, migrating older formats once. Invalid entries are
+ * dropped; unreadable data is backed up, never discarded.
  */
-export function loadTransactions(
-  storage: Storage = localStorage,
-): Transaction[] {
+export function loadAppData(storage: Storage = localStorage): AppData {
   const raw = storage.getItem(STORAGE_KEY);
-
-  if (raw === null) {
-    const legacy = readLegacy(storage);
-    if (legacy === null) return [];
-    saveTransactions(legacy, storage);
-    clearLegacy(storage);
-    return legacy;
+  if (raw !== null) {
+    return parseStored(raw, storage, CORRUPT_BACKUP_KEY) ?? EMPTY_DATA;
   }
 
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    const items =
-      isRecord(parsed) && Array.isArray(parsed.transactions)
-        ? parsed.transactions
-        : null;
-    if (!items) throw new Error("Unexpected storage shape");
-    return items.filter(isTransaction);
-  } catch {
-    if (storage.getItem(CORRUPT_BACKUP_KEY) === null) {
-      storage.setItem(CORRUPT_BACKUP_KEY, raw);
-    }
-    return [];
+  const v1 = storage.getItem(V1_KEY);
+  if (v1 !== null) {
+    const data = parseStored(v1, storage, `${V1_KEY}:corrupt-backup`);
+    if (!data) return EMPTY_DATA;
+    saveAppData(data, storage);
+    storage.removeItem(V1_KEY);
+    return data;
   }
+
+  const legacy = readLegacy(storage);
+  if (legacy === null) return EMPTY_DATA;
+  const data = { ...EMPTY_DATA, transactions: legacy };
+  saveAppData(data, storage);
+  clearLegacy(storage);
+  return data;
 }

@@ -1,16 +1,40 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
   --color-brand: #00766c;
   --color-brand-strong: #005a52;
   --color-brand-soft: #e6f2f1;
+  --color-on-brand: #ffffff;
   --color-expense: #760000;
+  --color-expense-strong: #5a0000;
   --color-expense-soft: #f7e8e8;
+  --color-on-expense: #ffffff;
   --color-ink: #2f3436;
   --color-muted: #5f6b6e;
   --color-line: #e2e6e7;
   --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+}
+
+/* Contrast for every text/background pair is at least 4.5:1 in both themes. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-brand: #4fbfb0;
+  --color-brand-strong: #7fd3c8;
+  --color-brand-soft: #15312e;
+  --color-on-brand: #08201d;
+  --color-expense: #ff8a80;
+  --color-expense-strong: #ffb0a8;
+  --color-expense-soft: #3a1d1b;
+  --color-on-expense: #2b0705;
+  --color-ink: #e8ecec;
+  --color-muted: #a3adb0;
+  --color-line: #2e3638;
+  --color-canvas: #111516;
+  --color-surface: #1a1f20;
 }
 
 @layer base {
@@ -38,7 +62,7 @@
 }
 
 @utility field {
-  @apply block w-full rounded-md border border-line bg-white px-3 py-2.5 text-base text-ink placeholder:text-muted/70 focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:cursor-not-allowed disabled:bg-canvas aria-invalid:border-expense aria-invalid:ring-expense/20 sm:text-sm;
+  @apply block w-full rounded-md border border-line bg-surface px-3 py-2.5 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:cursor-not-allowed disabled:bg-canvas aria-invalid:border-expense aria-invalid:ring-expense/20 sm:text-sm;
 }
 
 @utility field-label {
@@ -54,15 +78,15 @@
 }
 
 @utility btn-primary {
-  @apply btn bg-brand text-white hover:bg-brand-strong;
+  @apply btn bg-brand text-on-brand hover:bg-brand-strong;
 }
 
 @utility btn-secondary {
-  @apply btn border border-line bg-white text-brand hover:bg-brand-soft;
+  @apply btn border border-line bg-surface text-brand hover:bg-brand-soft;
 }
 
 @utility btn-danger {
-  @apply btn bg-expense text-white hover:bg-[#5a0000] focus-visible:outline-expense;
+  @apply btn bg-expense text-on-expense hover:bg-expense-strong focus-visible:outline-expense;
 }
 
 @utility icon-btn {

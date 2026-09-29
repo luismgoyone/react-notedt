@@ -1,5 +1,11 @@
-import type { Transaction } from "../types/transaction";
-import { STORAGE_KEY, loadTransactions, saveTransactions } from "./storage";
+import { EMPTY_DATA, type Transaction } from "../types/transaction";
+import { STORAGE_KEY, loadAppData, parseAppData, saveAppData } from "./storage";
+
+const withTransactions = (transactions: Transaction[]) => ({
+  ...EMPTY_DATA,
+  transactions,
+});
+const loadTransactions = () => loadAppData().transactions;
 
 const tx: Transaction = {
   id: "a",
@@ -14,19 +20,25 @@ const tx: Transaction = {
 
 describe("storage", () => {
   it("returns an empty list when nothing is stored", () => {
-    expect(loadTransactions()).toEqual([]);
+    expect(loadAppData()).toEqual(EMPTY_DATA);
   });
 
-  it("round-trips saved transactions under a single key", () => {
-    saveTransactions([tx]);
-    expect(loadTransactions()).toEqual([tx]);
+  it("round-trips saved data under a single key", () => {
+    const data = {
+      transactions: [tx],
+      categories: [{ id: "c", type: "expense" as const, name: "Pets" }],
+      budgets: [{ category: "Pets", limit: 500 }],
+      recurring: [],
+    };
+    saveAppData(data);
+    expect(loadAppData()).toEqual(data);
     expect(localStorage.length).toBe(1);
-    expect(localStorage.getItem(STORAGE_KEY)).toContain('"version":1');
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('"version":2');
   });
 
   it("ignores unrelated keys on the same origin", () => {
     localStorage.setItem("some-other-app", "hello");
-    saveTransactions([tx]);
+    saveAppData(withTransactions([tx]));
     expect(loadTransactions()).toEqual([tx]);
   });
 
@@ -34,11 +46,12 @@ describe("storage", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        version: 1,
+        version: 2,
         transactions: [tx, { ...tx, id: "b", amount: -5 }, { nope: true }],
+        budgets: [{ category: "Rentals", limit: 0 }],
       }),
     );
-    expect(loadTransactions()).toEqual([tx]);
+    expect(loadAppData()).toEqual(withTransactions([tx]));
   });
 
   it("backs up unreadable data instead of throwing", () => {
@@ -47,6 +60,22 @@ describe("storage", () => {
     expect(localStorage.getItem(`${STORAGE_KEY}:corrupt-backup`)).toBe(
       "{not json",
     );
+  });
+
+  it("migrates the 1.0 transactions-only format", () => {
+    localStorage.setItem(
+      "notedt:transactions",
+      JSON.stringify({ version: 1, transactions: [tx] }),
+    );
+    expect(loadAppData()).toEqual(withTransactions([tx]));
+    expect(localStorage.getItem("notedt:transactions")).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("rejects values that aren't Notedt data", () => {
+    expect(parseAppData(null)).toBeNull();
+    expect(parseAppData({ hello: "world" })).toBeNull();
+    expect(parseAppData([])).toBeNull();
   });
 
   it("migrates the legacy one-key-per-transaction format", () => {
